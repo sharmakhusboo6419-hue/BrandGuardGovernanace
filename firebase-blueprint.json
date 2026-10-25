@@ -1,0 +1,166 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authenticated user profile with assigned brand governance role",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Firebase Auth UID"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Display name"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["creator", "manager", "compliance_officer"],
+          "description": "Governance role"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["id", "email", "role"]
+    },
+    "Draft": {
+      "title": "Draft",
+      "description": "Content publication draft submitted for brand governance review",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique draft document ID"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Headline or title of the content draft"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["press_release", "social_carousel", "landing_page", "email_newsletter", "blog_post", "whitepaper"],
+          "description": "Publication format"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "Draft body text copy"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "in_review", "approved", "changes_requested", "rejected"],
+          "description": "Publication review status"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Author user UID"
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Author display name"
+        },
+        "authorEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Author email address"
+        },
+        "score": {
+          "type": "number",
+          "description": "Current brand compliance score (0-100)"
+        },
+        "criticalCount": {
+          "type": "number",
+          "description": "Remaining critical issue count"
+        },
+        "warningCount": {
+          "type": "number",
+          "description": "Remaining warning issue count"
+        },
+        "suggestionCount": {
+          "type": "number",
+          "description": "Remaining suggestion issue count"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last modified timestamp"
+        }
+      },
+      "required": ["id", "title", "format", "text", "status", "authorId"]
+    },
+    "FactItem": {
+      "title": "FactItem",
+      "description": "Approved brand fact or verified empirical claim in the Fact Vault",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Fact document ID"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category e.g. performance, security, architecture"
+        },
+        "claim": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Approved factual phrasing"
+        },
+        "proof": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Underlying empirical proof or benchmark evidence"
+        },
+        "citationUrl": {
+          "type": "string",
+          "description": "URL or internal doc citation reference"
+        },
+        "verifiedBy": {
+          "type": "string",
+          "description": "Email or UID of reviewer who verified this fact"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last verified timestamp"
+        }
+      },
+      "required": ["id", "category", "claim", "proof"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "User profile with governance permissions"
+    },
+    "/drafts/{draftId}": {
+      "schema": {
+        "$ref": "#/entities/Draft"
+      },
+      "description": "Content drafts undergoing brand governance review and approval"
+    },
+    "/facts/{factId}": {
+      "schema": {
+        "$ref": "#/entities/FactItem"
+      },
+      "description": "Verified brand facts stored in the central Fact Vault"
+    }
+  }
+}

@@ -10,9 +10,15 @@ import {
   Send, 
   SplitSquareVertical, 
   BookOpen, 
-  Copy,
-  Plus,
-  HardDrive
+  Copy, 
+  Plus, 
+  HardDrive,
+  Eye,
+  Sliders,
+  ShieldCheck,
+  ShieldAlert,
+  FileCheck2,
+  Maximize2
 } from 'lucide-react';
 import { 
   ContentDraft, 
@@ -22,6 +28,11 @@ import {
   IssueSeverity, 
   VisualAsset 
 } from '../types/governance';
+import { ChannelSimulatorModal } from './ChannelSimulatorModal';
+import { ToneVoiceRadar } from './ToneVoiceRadar';
+import { FactMatcherPanel } from './FactMatcherPanel';
+import { VisualAssetInspectorModal } from './VisualAssetInspectorModal';
+import { VoiceSimilarityPanel } from './VoiceSimilarityPanel';
 
 interface EditorAuditViewProps {
   draft: ContentDraft;
@@ -44,16 +55,23 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
   onOpenVault,
   onOpenGoogleDrive,
 }) => {
-  const [activeTab, setActiveTab] = useState<'issues' | 'revised' | 'assets'>('issues');
+  const [activeTab, setActiveTab] = useState<'editor' | 'canvas' | 'assets'>('editor');
+  const [inspectorTab, setInspectorTab] = useState<'issues' | 'similarity' | 'radar' | 'facts' | 'revised'>('issues');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [showDiff, setShowDiff] = useState<boolean>(false);
   const [justifyingIssueId, setJustifyingIssueId] = useState<string | null>(null);
   const [justificationText, setJustificationText] = useState<string>('');
-  const [newAssetModalOpen, setNewAssetModalOpen] = useState<boolean>(false);
-  const [newAssetName, setNewAssetName] = useState<string>('');
-  const [newAssetAlt, setNewAssetAlt] = useState<string>('');
-  const [copiedRevised, setCopiedRevised] = useState<boolean>(false);
+  
+  // Modals state
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+  const [inspectingAsset, setInspectingAsset] = useState<VisualAsset | null>(null);
+  const [newAssetModalOpen, setNewAssetModalOpen] = useState(false);
+  const [newAssetName, setNewAssetName] = useState('');
+  const [newAssetAlt, setNewAssetAlt] = useState('');
+  const [copiedRevised, setCopiedRevised] = useState(false);
+  const [isRedactionModalOpen, setIsRedactionModalOpen] = useState(false);
+  const [copiedRedacted, setCopiedRedacted] = useState(false);
 
   const audit = draft.auditResult;
 
@@ -187,6 +205,24 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
     });
   };
 
+  const handleFactReplace = (oldText: string, newText: string) => {
+    const currentText = draft.text;
+    const replaced = currentText.replace(oldText, newText);
+    onUpdateDraft({
+      text: replaced,
+      previousVersionText: currentText,
+    });
+  };
+
+  // Generate sanitized agency copy (replacing codenames and unreleased ARR)
+  const getSanitizedAgencyCopy = () => {
+    let sanitized = draft.text;
+    sanitized = sanitized.replace(/Project\s+Titan/gi, '[CONFIDENTIAL-INITIATIVE]');
+    sanitized = sanitized.replace(/Codename\s+Bluebird/gi, '[CONFIDENTIAL-ENCLAVE]');
+    sanitized = sanitized.replace(/\$45M\s+(ARR|revenue|trajectory)/gi, '[CONFIDENTIAL-GROWTH-METRIC]');
+    return sanitized;
+  };
+
   const filteredIssues = (audit?.issues || []).filter((issue) => {
     if (categoryFilter === 'all') return true;
     return issue.category === categoryFilter;
@@ -275,26 +311,24 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
 
           {/* Action Bar */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Confidential Scrubbing Toggle */}
+            {/* Live Multi-Channel Simulator Button */}
             <button
-              onClick={() => onUpdateDraft({ confidentialMode: !draft.confidentialMode })}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                draft.confidentialMode
-                  ? 'bg-rose-50 border-rose-200 text-rose-700'
-                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+              onClick={() => setIsSimulatorOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+              title="Preview simulated publication on LinkedIn, PR Wire, Web or Email"
             >
-              {draft.confidentialMode ? (
-                <>
-                  <Lock className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Confidential Mode</span>
-                </>
-              ) : (
-                <>
-                  <Unlock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Public Mode</span>
-                </>
-              )}
+              <Eye className="w-3.5 h-3.5 text-blue-600" />
+              <span>Channel Preview</span>
+            </button>
+
+            {/* Sanitized Agency Copy Generator */}
+            <button
+              onClick={() => setIsRedactionModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+              title="Generate sanitized copy scrubbing internal codenames for outside agencies"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span>Redacted Copy</span>
             </button>
 
             {/* Diff toggle */}
@@ -350,18 +384,29 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Column: Editor & Visual Assets */}
         <div className="flex-1 flex flex-col border-r border-slate-200 bg-slate-50 overflow-y-auto">
-          {/* Subheader tabs */}
+          {/* Subheader tabs: Editor vs Interactive Canvas vs Visual Assets */}
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-2 bg-white">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setActiveTab('issues')}
+                onClick={() => setActiveTab('editor')}
                 className={`px-3 py-1 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === 'issues'
+                  activeTab === 'editor'
                     ? 'border-blue-600 text-slate-900 font-semibold'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Draft Content
+                Draft Text Editor
+              </button>
+              <button
+                onClick={() => setActiveTab('canvas')}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === 'canvas'
+                    ? 'border-blue-600 text-slate-900 font-semibold'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                <span>Live Brand Highlighter</span>
               </button>
               <button
                 onClick={() => setActiveTab('assets')}
@@ -386,15 +431,14 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
             </div>
           </div>
 
-          {/* Editor Body or Assets Body */}
+          {/* Sub-view: Visual Assets */}
           {activeTab === 'assets' ? (
-            /* Visual Assets Manager */
             <div className="p-6 space-y-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">Brand Visual Assets</h3>
                   <p className="text-xs text-slate-500">
-                    Verify visual consistency, brand colors, and alternative text.
+                    Verify visual consistency, logo clearspace, and WCAG contrast.
                   </p>
                 </div>
                 <button
@@ -418,14 +462,22 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
                     return (
                       <div
                         key={asset.id}
-                        className="border border-slate-200 bg-white rounded-xl p-4 space-y-3 shadow-xs"
+                        className="border border-slate-200 bg-white rounded-xl p-4 space-y-3 shadow-xs hover:border-slate-300 transition-colors"
                       >
-                        <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                        <div 
+                          className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer group"
+                          onClick={() => setInspectingAsset(asset)}
+                          title="Click to open Safezone Grid & Contrast Inspector"
+                        >
                           <img
                             src={asset.url}
                             alt={asset.altText || asset.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                           />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold gap-1.5 backdrop-blur-xs">
+                            <Maximize2 className="w-4 h-4" />
+                            <span>Inspect Safezone & Contrast</span>
+                          </div>
                           {asset.hasLogo && (
                             <div className="absolute top-2 right-2 bg-white/90 border border-slate-200 px-2 py-0.5 rounded text-[10px] text-slate-700 font-medium">
                               Logo Present
@@ -454,7 +506,6 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
                           </div>
                         </div>
 
-                        {/* Alt-text verification */}
                         <div className="space-y-1 pt-2 border-t border-slate-100">
                           <div className="flex items-center justify-between text-[11px]">
                             <label className="text-slate-600 font-medium flex items-center gap-1">
@@ -479,6 +530,54 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
                   })}
                 </div>
               )}
+            </div>
+          ) : activeTab === 'canvas' ? (
+            /* Sub-view: LIVE BRAND HIGHLIGHTER (Interactive WYSIWYG Canvas) */
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>Interactive view: click any underlined phrase to inspect rule rationale and accept fix</span>
+                <span className="text-blue-600 font-medium">{audit?.issues.length ?? 0} annotations detected</span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs leading-loose text-sm font-sans text-slate-800 space-y-4">
+                {draft.text.split('\n\n').map((paragraph, pIdx) => {
+                  let renderedParagraph: React.ReactNode = paragraph;
+
+                  (audit?.issues || []).forEach((issue) => {
+                    if (issue.flaggedText && typeof renderedParagraph === 'string' && renderedParagraph.includes(issue.flaggedText)) {
+                      const parts = renderedParagraph.split(issue.flaggedText);
+                      renderedParagraph = (
+                        <span>
+                          {parts[0]}
+                          <span
+                            onClick={() => {
+                              setSelectedIssueId(issue.id);
+                              setInspectorTab('issues');
+                            }}
+                            className={`cursor-pointer px-1 py-0.5 rounded font-medium transition-all inline-block my-0.5 ${
+                              issue.applied
+                                ? 'line-through text-slate-400 bg-slate-100'
+                                : issue.justified
+                                ? 'text-sky-800 bg-sky-100 border border-sky-300'
+                                : issue.severity === 'critical'
+                                ? 'text-rose-900 bg-rose-100 border-b-2 border-rose-500 hover:bg-rose-200'
+                                : issue.severity === 'warning'
+                                ? 'text-amber-900 bg-amber-100 border-b-2 border-amber-500 hover:bg-amber-200'
+                                : 'text-blue-900 bg-blue-100 border-b-2 border-blue-500 hover:bg-blue-200'
+                            }`}
+                            title={`Click to view: ${issue.headline}`}
+                          >
+                            "{issue.flaggedText}"
+                          </span>
+                          {parts.slice(1).join(issue.flaggedText)}
+                        </span>
+                      );
+                    }
+                  });
+
+                  return <p key={pIdx}>{renderedParagraph}</p>;
+                })}
+              </div>
             </div>
           ) : showDiff && draft.previousVersionText ? (
             /* Diff view */
@@ -508,7 +607,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
               </div>
             </div>
           ) : (
-            /* Standard Text Editor */
+            /* Standard Raw Text Editor */
             <div className="flex-1 p-6 flex flex-col">
               <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
                 <textarea
@@ -528,7 +627,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
                         key={issue.id}
                         onClick={() => {
                           setSelectedIssueId(issue.id);
-                          setActiveTab('issues');
+                          setInspectorTab('issues');
                         }}
                         className={`text-xs px-2 py-0.5 rounded border text-left transition-all ${
                           issue.applied
@@ -552,7 +651,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
           )}
         </div>
 
-        {/* Right Column: Audit Inspector */}
+        {/* Right Column: Multi-Tab Governance Inspector */}
         <div className="w-full lg:w-[440px] bg-white flex flex-col border-l border-slate-200 overflow-hidden">
           {/* Audit Score Header */}
           <div className="p-4 border-b border-slate-200 bg-slate-50/60">
@@ -595,20 +694,14 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
                 </div>
               </div>
             </div>
-
-            {audit?.summary && (
-              <p className="mt-2.5 text-xs text-slate-600 leading-relaxed border-t border-slate-200/80 pt-2">
-                {audit.summary}
-              </p>
-            )}
           </div>
 
-          {/* Tabs: Issues vs Full Revised */}
-          <div className="flex items-center border-b border-slate-200 px-4 bg-white text-xs">
+          {/* Inspector Views Selector (Tabs: Issues, Voice Radar, Fact Grounding, Rewrite) */}
+          <div className="flex items-center border-b border-slate-200 px-3 bg-white text-xs overflow-x-auto">
             <button
-              onClick={() => setActiveTab('issues')}
-              className={`py-2 px-3 font-medium border-b-2 transition-colors ${
-                activeTab === 'issues'
+              onClick={() => setInspectorTab('issues')}
+              className={`py-2 px-2.5 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                inspectorTab === 'issues'
                   ? 'border-blue-600 text-slate-900 font-semibold'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -616,251 +709,346 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
               Issues ({filteredIssues.length})
             </button>
             <button
-              onClick={() => setActiveTab('revised')}
-              className={`py-2 px-3 font-medium border-b-2 transition-colors ${
-                activeTab === 'revised'
+              onClick={() => setInspectorTab('similarity')}
+              className={`py-2 px-2.5 font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1 ${
+                inspectorTab === 'similarity'
                   ? 'border-blue-600 text-slate-900 font-semibold'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Full Cohesive Rewrite
+              <Sparkles className="w-3 h-3 text-indigo-600" />
+              <span>Voice Similarity</span>
+            </button>
+            <button
+              onClick={() => setInspectorTab('radar')}
+              className={`py-2 px-2.5 font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1 ${
+                inspectorTab === 'radar'
+                  ? 'border-blue-600 text-slate-900 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Sliders className="w-3 h-3" />
+              <span>Voice Radar</span>
+            </button>
+            <button
+              onClick={() => setInspectorTab('facts')}
+              className={`py-2 px-2.5 font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1 ${
+                inspectorTab === 'facts'
+                  ? 'border-blue-600 text-slate-900 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+              <span>Fact Grounding</span>
+            </button>
+            <button
+              onClick={() => setInspectorTab('revised')}
+              className={`py-2 px-2.5 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                inspectorTab === 'revised'
+                  ? 'border-blue-600 text-slate-900 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Rewrite
             </button>
           </div>
 
-          {/* Category Filter Controls */}
-          {activeTab === 'issues' && (
-            <div className="p-2.5 border-b border-slate-100 bg-slate-50/50 overflow-x-auto flex items-center gap-1 text-xs">
-              <button
-                onClick={() => setCategoryFilter('all')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  categoryFilter === 'all'
-                    ? 'bg-slate-200 text-slate-900 font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setCategoryFilter('unsupported_claims')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  categoryFilter === 'unsupported_claims'
-                    ? 'bg-slate-200 text-slate-900 font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Claims
-              </button>
-              <button
-                onClick={() => setCategoryFilter('terminology')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  categoryFilter === 'terminology'
-                    ? 'bg-slate-200 text-slate-900 font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Terms
-              </button>
-              <button
-                onClick={() => setCategoryFilter('tone')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  categoryFilter === 'tone'
-                    ? 'bg-slate-200 text-slate-900 font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Tone
-              </button>
-              <button
-                onClick={() => setCategoryFilter('confidentiality')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  categoryFilter === 'confidentiality'
-                    ? 'bg-slate-200 text-slate-900 font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Confidential
-              </button>
+          {/* Inspector Tab 1: Issues List */}
+          {inspectorTab === 'issues' && (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="p-2.5 border-b border-slate-100 bg-slate-50/50 overflow-x-auto flex items-center gap-1 text-xs">
+                <button
+                  onClick={() => setCategoryFilter('all')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+                    categoryFilter === 'all'
+                      ? 'bg-slate-200 text-slate-900 font-semibold'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setCategoryFilter('unsupported_claims')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+                    categoryFilter === 'unsupported_claims'
+                      ? 'bg-slate-200 text-slate-900 font-semibold'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Claims
+                </button>
+                <button
+                  onClick={() => setCategoryFilter('terminology')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+                    categoryFilter === 'terminology'
+                      ? 'bg-slate-200 text-slate-900 font-semibold'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Terms
+                </button>
+                <button
+                  onClick={() => setCategoryFilter('tone')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+                    categoryFilter === 'tone'
+                      ? 'bg-slate-200 text-slate-900 font-semibold'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Tone
+                </button>
+                <button
+                  onClick={() => setCategoryFilter('confidentiality')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+                    categoryFilter === 'confidentiality'
+                      ? 'bg-slate-200 text-slate-900 font-semibold'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Confidential
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/30">
+                {!audit ? (
+                  <div className="py-12 text-center text-xs text-slate-400">
+                    Click "Run Audit" to analyze content against guidelines.
+                  </div>
+                ) : filteredIssues.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-slate-500">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto mb-1.5" />
+                    <p>No issues found for this filter.</p>
+                  </div>
+                ) : (
+                  filteredIssues.map((issue) => {
+                    const isSelected = selectedIssueId === issue.id;
+                    const isApplied = issue.applied;
+                    const isJustified = issue.justified;
+
+                    return (
+                      <div
+                        key={issue.id}
+                        className={`border rounded-xl p-3.5 transition-all bg-white shadow-xs ${
+                          isApplied
+                            ? 'border-slate-200 opacity-60'
+                            : isJustified
+                            ? 'border-sky-300 bg-sky-50/30'
+                            : isSelected
+                            ? 'border-blue-600 shadow-sm'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[11px] mb-1.5">
+                          <div className="flex items-center gap-1.5 text-slate-500">
+                            <span>{getCategoryLabel(issue.category)}</span>
+                            <span aria-hidden="true">·</span>
+                            {getSeverityBadge(issue.severity)}
+                          </div>
+                          {isApplied && (
+                            <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-0.5">
+                              <Check className="w-3 h-3" />
+                              Applied
+                            </span>
+                          )}
+                          {isJustified && (
+                            <span className="text-[11px] text-sky-700 font-semibold">
+                              Overridden
+                            </span>
+                          )}
+                        </div>
+
+                        <h5 className="text-xs font-semibold text-slate-900 mb-2">
+                          {issue.headline}
+                        </h5>
+
+                        <div className="space-y-1.5 my-2 text-xs">
+                          <div className="p-2 rounded bg-rose-50 border border-rose-200 text-rose-900 font-mono text-[11px]">
+                            "{issue.flaggedText}"
+                          </div>
+                          <div className="p-2 rounded bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px]">
+                            {issue.suggestedReplacement}
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          {issue.explanation}
+                        </p>
+
+                        {isJustified && issue.justificationNote && (
+                          <div className="mt-2 text-[11px] bg-sky-50 border border-sky-200 p-2 rounded text-sky-900">
+                            <span className="font-semibold block text-[10px] text-sky-700">Audit Note:</span>
+                            "{issue.justificationNote}"
+                          </div>
+                        )}
+
+                        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
+                          {isApplied ? (
+                            <button
+                              onClick={() => handleUndoIssue(issue)}
+                              className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Undo</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleApplyIssue(issue)}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>Accept</span>
+                            </button>
+                          )}
+
+                          {!isApplied && !isJustified && (
+                            <button
+                              onClick={() => setJustifyingIssueId(issue.id)}
+                              className="text-[11px] text-slate-500 hover:text-slate-800 underline"
+                            >
+                              Override
+                            </button>
+                          )}
+                        </div>
+
+                        {justifyingIssueId === issue.id && (
+                          <div className="mt-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                            <input
+                              type="text"
+                              value={justificationText}
+                              onChange={(e) => setJustificationText(e.target.value)}
+                              placeholder="Reason for overriding..."
+                              className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                            />
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setJustifyingIssueId(null);
+                                  setJustificationText('');
+                                }}
+                                className="px-2 py-0.5 text-[11px] text-slate-500 hover:text-slate-800"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSaveJustification(issue.id)}
+                                className="px-2.5 py-0.5 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded"
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
 
-          {/* Issues List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/30">
-            {activeTab === 'revised' ? (
-              <div className="space-y-3">
-                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-blue-700 flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Rewritten Copy
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (audit?.revisedText) {
-                          navigator.clipboard.writeText(audit.revisedText);
-                          setCopiedRevised(true);
-                          setTimeout(() => setCopiedRevised(false), 2000);
-                        }
-                      }}
-                      className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>{copiedRevised ? 'Copied' : 'Copy'}</span>
-                    </button>
-                  </div>
-                  <div className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed font-sans bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    {audit?.revisedText || 'Run audit to generate rewrite.'}
-                  </div>
+          {/* Inspector Tab 2: Voice & Tone Radar */}
+          {inspectorTab === 'radar' && (
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/40">
+              <ToneVoiceRadar
+                metrics={audit?.toneRadar}
+                onAutoRebalance={handleApplyFullRevised}
+              />
+            </div>
+          )}
+
+          {/* Inspector Tab 3: Fact Vault Matcher */}
+          {inspectorTab === 'facts' && (
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/40">
+              <FactMatcherPanel
+                draftText={draft.text}
+                onReplaceWithVerified={handleFactReplace}
+              />
+            </div>
+          )}
+
+          {/* Inspector Tab: Voice Similarity against Historical Benchmarks */}
+          {inspectorTab === 'similarity' && (
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/40">
+              <VoiceSimilarityPanel
+                draftTitle={draft.title}
+                draftFormat={draft.format}
+                draftText={draft.text}
+                onApplyLinguisticShift={(currentPhrase, proposedPhrase) => {
+                  if (!currentPhrase || !proposedPhrase) return;
+                  let updated = draft.text;
+                  if (updated.includes(currentPhrase)) {
+                    updated = updated.replace(currentPhrase, proposedPhrase);
+                  } else {
+                    const escaped = currentPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escaped, 'i');
+                    if (regex.test(updated)) {
+                      updated = updated.replace(regex, proposedPhrase);
+                    }
+                  }
+                  onUpdateDraft({
+                    text: updated,
+                    previousVersionText: draft.text,
+                  });
+                }}
+              />
+            </div>
+          )}
+
+          {/* Inspector Tab 4: Full Rewrite */}
+          {inspectorTab === 'revised' && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/40">
+              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-blue-700 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Rewritten Copy
+                  </span>
                   <button
-                    onClick={handleApplyFullRevised}
-                    className="w-full py-2 px-3 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                    onClick={() => {
+                      if (audit?.revisedText) {
+                        navigator.clipboard.writeText(audit.revisedText);
+                        setCopiedRevised(true);
+                        setTimeout(() => setCopiedRevised(false), 2000);
+                      }
+                    }}
+                    className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1"
                   >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Apply Rewrite to Editor</span>
+                    <Copy className="w-3 h-3" />
+                    <span>{copiedRevised ? 'Copied' : 'Copy'}</span>
                   </button>
                 </div>
+                <div className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed font-sans bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  {audit?.revisedText || 'Run audit to generate rewrite.'}
+                </div>
+                <button
+                  onClick={handleApplyFullRevised}
+                  className="w-full py-2 px-3 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Apply Rewrite to Editor</span>
+                </button>
               </div>
-            ) : !audit ? (
-              <div className="py-12 text-center text-xs text-slate-400">
-                Click "Run Audit" to analyze content.
-              </div>
-            ) : filteredIssues.length === 0 ? (
-              <div className="py-10 text-center text-xs text-slate-500">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto mb-1.5" />
-                <p>No issues found for this filter.</p>
-              </div>
-            ) : (
-              filteredIssues.map((issue) => {
-                const isSelected = selectedIssueId === issue.id;
-                const isApplied = issue.applied;
-                const isJustified = issue.justified;
-
-                return (
-                  <div
-                    key={issue.id}
-                    className={`border rounded-xl p-3.5 transition-all bg-white shadow-xs ${
-                      isApplied
-                        ? 'border-slate-200 opacity-60'
-                        : isJustified
-                        ? 'border-sky-300 bg-sky-50/30'
-                        : isSelected
-                        ? 'border-blue-600 shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    {/* Category & Severity */}
-                    <div className="flex items-center justify-between text-[11px] mb-1.5">
-                      <div className="flex items-center gap-1.5 text-slate-500">
-                        <span>{getCategoryLabel(issue.category)}</span>
-                        <span aria-hidden="true">·</span>
-                        {getSeverityBadge(issue.severity)}
-                      </div>
-                      {isApplied && (
-                        <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-0.5">
-                          <Check className="w-3 h-3" />
-                          Applied
-                        </span>
-                      )}
-                      {isJustified && (
-                        <span className="text-[11px] text-sky-700 font-semibold">
-                          Overridden
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Headline */}
-                    <h5 className="text-xs font-semibold text-slate-900 mb-2">
-                      {issue.headline}
-                    </h5>
-
-                    {/* Flagged snippet vs suggestion */}
-                    <div className="space-y-1.5 my-2 text-xs">
-                      <div className="p-2 rounded bg-rose-50 border border-rose-200 text-rose-900 font-mono text-[11px]">
-                        "{issue.flaggedText}"
-                      </div>
-                      <div className="p-2 rounded bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px]">
-                        {issue.suggestedReplacement}
-                      </div>
-                    </div>
-
-                    {/* Rationale */}
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      {issue.explanation}
-                    </p>
-
-                    {/* Justification note if present */}
-                    {isJustified && issue.justificationNote && (
-                      <div className="mt-2 text-[11px] bg-sky-50 border border-sky-200 p-2 rounded text-sky-900">
-                        <span className="font-semibold block text-[10px] text-sky-700">Audit Note:</span>
-                        "{issue.justificationNote}"
-                      </div>
-                    )}
-
-                    {/* Action buttons */}
-                    <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
-                      {isApplied ? (
-                        <button
-                          onClick={() => handleUndoIssue(issue)}
-                          className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>Undo</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleApplyIssue(issue)}
-                          className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                        >
-                          <Check className="w-3 h-3" />
-                          <span>Accept</span>
-                        </button>
-                      )}
-
-                      {!isApplied && !isJustified && (
-                        <button
-                          onClick={() => setJustifyingIssueId(issue.id)}
-                          className="text-[11px] text-slate-500 hover:text-slate-800 underline"
-                        >
-                          Override
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Override note form */}
-                    {justifyingIssueId === issue.id && (
-                      <div className="mt-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                        <input
-                          type="text"
-                          value={justificationText}
-                          onChange={(e) => setJustificationText(e.target.value)}
-                          placeholder="Reason for overriding..."
-                          className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
-                        />
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => {
-                              setJustifyingIssueId(null);
-                              setJustificationText('');
-                            }}
-                            className="px-2 py-0.5 text-[11px] text-slate-500 hover:text-slate-800"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => handleSaveJustification(issue.id)}
-                            className="px-2.5 py-0.5 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Multi-Channel Publication Simulator Modal */}
+      <ChannelSimulatorModal
+        draft={draft}
+        isOpen={isSimulatorOpen}
+        onClose={() => setIsSimulatorOpen(false)}
+      />
+
+      {/* Visual Asset Safezone & Contrast Inspector Modal */}
+      {inspectingAsset && (
+        <VisualAssetInspectorModal
+          asset={inspectingAsset}
+          isOpen={!!inspectingAsset}
+          onClose={() => setInspectingAsset(null)}
+          onUpdateAltText={(newAlt) => handleUpdateAssetAlt(inspectingAsset.id, newAlt)}
+        />
+      )}
 
       {/* Add Visual Asset Modal */}
       {newAssetModalOpen && (
@@ -900,6 +1088,51 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
                 className="px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
               >
                 Attach
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sanitized Agency Copy Modal */}
+      {isRedactionModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl text-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-900">Sanitized Agency Copy</h3>
+              </div>
+              <button onClick={() => setIsRedactionModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Internal project codenames and non-public financial metrics are masked with redaction tokens for external agency distribution.
+            </p>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-800 font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+              {getSanitizedAgencyCopy()}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setIsRedactionModalOpen(false)}
+                className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(getSanitizedAgencyCopy());
+                  setCopiedRedacted(true);
+                  setTimeout(() => setCopiedRedacted(false), 2000);
+                }}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs flex items-center gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedRedacted ? 'Copied to Clipboard' : 'Copy Sanitized Text'}</span>
               </button>
             </div>
           </div>

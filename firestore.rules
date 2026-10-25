@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'sharmakhusboo924@gmail.com') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Profile Validation
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'email', 'role']) &&
+        data.keys().hasOnly(['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt', 'photoURL']) &&
+        data.id is string && data.id == request.auth.uid &&
+        data.email is string && data.email.size() <= 120 &&
+        data.role is string && (data.role == 'creator' || data.role == 'manager' || data.role == 'compliance_officer') &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100));
+    }
+
+    // Draft Validation
+    function isValidDraft(data) {
+      return data.keys().hasAll(['id', 'title', 'format', 'text', 'status', 'authorId']) &&
+        data.id is string && isValidId(data.id) &&
+        data.title is string && data.title.size() <= 200 &&
+        data.format is string && data.format.size() <= 50 &&
+        data.text is string && data.text.size() <= 50000 &&
+        data.status is string && (
+          data.status == 'draft' ||
+          data.status == 'in_review' ||
+          data.status == 'approved' ||
+          data.status == 'changes_requested' ||
+          data.status == 'rejected'
+        ) &&
+        data.authorId is string && data.authorId == request.auth.uid;
+    }
+
+    // Fact Vault Item Validation
+    function isValidFact(data) {
+      return data.keys().hasAll(['id', 'category', 'claim', 'proof']) &&
+        data.id is string && isValidId(data.id) &&
+        data.category is string && data.category.size() <= 100 &&
+        data.claim is string && data.claim.size() <= 500 &&
+        data.proof is string && data.proof.size() <= 1000;
+    }
+
+    // User collection: Private user profiles with PII protection
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) || isAdmin()) &&
+        isValidUser(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().email == existing().email;
+      allow delete: if isAdmin();
+    }
+
+    // Content Drafts: Core collaboration documents
+    match /drafts/{draftId} {
+      allow get: if isSignedIn() && isValidId(draftId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(draftId) && isValidDraft(incoming());
+      allow update: if isSignedIn() && isValidId(draftId) && (
+        isAdmin() ||
+        (
+          // Author updating draft content
+          existing().authorId == request.auth.uid &&
+          incoming().authorId == existing().authorId &&
+          incoming().id == existing().id &&
+          incoming().title is string && incoming().title.size() <= 200 &&
+          incoming().text is string && incoming().text.size() <= 50000
+        ) ||
+        (
+          // Reviewer / Manager approving, requesting changes, or rejecting
+          incoming().authorId == existing().authorId &&
+          incoming().id == existing().id &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'auditResult', 'comments', 'score', 'criticalCount', 'warningCount', 'suggestionCount'])
+        )
+      );
+      allow delete: if isAdmin() || (isSignedIn() && existing().authorId == request.auth.uid);
+    }
+
+    // Fact Vault: Verified brand facts and citations
+    match /facts/{factId} {
+      allow get: if isSignedIn() && isValidId(factId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(factId) && isValidFact(incoming());
+      allow update: if isSignedIn() && isValidId(factId) && isValidFact(incoming()) &&
+        incoming().id == existing().id;
+      allow delete: if isAdmin();
+    }
+  }
+}

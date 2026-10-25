@@ -1,13 +1,13 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getAuth, 
   signInWithPopup, 
   GoogleAuthProvider, 
   onAuthStateChanged, 
   signOut, 
   User 
 } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { auth } from './firebase';
+
+export { auth };
 
 export const DRIVE_SCOPES = [
   'https://www.googleapis.com/auth/drive',
@@ -24,10 +24,6 @@ export const DRIVE_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/drive.scripts'
 ];
-
-// Initialize Firebase App safely (singleton)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
 // Add all configured Google Drive scopes

@@ -251,6 +251,13 @@ function runDeterministicAudit(content: {
       gradeLevel: avgWordsPerSentence > 22 ? 'Grade 12 (Executive/Technical)' : 'Grade 9 (Clear Enterprise)',
       estimatedReadTimeMinutes: Math.max(1, Math.ceil(words.length / 200)),
     },
+    toneRadar: {
+      authority: issues.filter(i => i.category === 'tone').length > 0 ? 64 : 82,
+      accessibility: avgWordsPerSentence > 22 ? 68 : 86,
+      hypeLevel: issues.filter(i => i.category === 'unsupported_claims' || i.category === 'tone').length > 0 ? 32 : 12,
+      calmConfidence: issues.filter(i => i.category === 'tone').length > 0 ? 62 : 90,
+      status: issues.filter(i => i.category === 'unsupported_claims' || i.category === 'tone').length > 0 ? 'too_hype' : 'balanced',
+    },
     engine: 'deterministic-fallback'
   };
 }
@@ -508,6 +515,185 @@ Return JSON with:
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Clarify failed' });
+  }
+});
+
+const HISTORICAL_BENCHMARKS = [
+  {
+    title: 'Aegis Sentinel Enterprise v3 Announcement',
+    format: 'press_release',
+    performance: '98% tier-1 tech press pickup, zero legal challenges',
+    pattern: 'Empirical lead sentences, active voice, specific SLA metrics',
+    metrics: { avgSentenceLen: 18.2, activeVoice: 92, lexicalDiversity: 0.74, empiricalScore: 88 }
+  },
+  {
+    title: 'Why Autonomous Systems Demand Human Oversight',
+    format: 'social_carousel',
+    performance: 'Top 1% B2B engagement rate (4.8% on LinkedIn)',
+    pattern: 'Calm authority, avoids manufactured FOMO, clear structural cadence',
+    metrics: { avgSentenceLen: 16.4, activeVoice: 89, lexicalDiversity: 0.72, empiricalScore: 84 }
+  },
+  {
+    title: 'Enterprise Data Sovereignty Architecture Hub',
+    format: 'landing_page',
+    performance: '14.2% B2B enterprise trial conversion rate',
+    pattern: 'Outcome-driven headers, proof-first claims, SOC 2 proof anchors',
+    metrics: { avgSentenceLen: 14.8, activeVoice: 94, lexicalDiversity: 0.76, empiricalScore: 90 }
+  }
+];
+
+// POST /api/voice-similarity: Compares draft with historical top-performing brand publications
+app.post('/api/voice-similarity', async (req, res) => {
+  try {
+    const { text, format, title } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Text content is required' });
+    }
+
+    // Linguistic feature extraction
+    const words = text.split(/\s+/).filter(Boolean);
+    const sentences = text.split(/[.!?]+/).filter(Boolean);
+    const avgSentenceLength = sentences.length > 0 ? Number((words.length / sentences.length).toFixed(1)) : 16;
+    const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, '')));
+    const lexicalDiversity = words.length > 0 ? Number((uniqueWords.size / words.length).toFixed(2)) : 0.7;
+
+    const passiveMatches = text.match(/\b(is|are|was|were|been|being)\s+([a-z]+ed|[a-z]+en)\b/gi) || [];
+    const passiveCount = passiveMatches.length;
+    const activeVoicePercent = Math.max(50, Math.min(100, Math.round(100 - (passiveCount / Math.max(1, sentences.length)) * 30)));
+
+    const closestBenchmark = HISTORICAL_BENCHMARKS.find(b => b.format === format) || HISTORICAL_BENCHMARKS[0];
+
+    if (ai) {
+      try {
+        const prompt = `
+You are the Chief Brand Linguist for Aegis Enterprise Technologies.
+Compare this draft against our top-performing corporate publications to evaluate "Brand Voice Similarity" and produce a Consistency Score with concrete linguistic suggestions.
+
+TOP PERFORMING BENCHMARKS:
+${JSON.stringify(HISTORICAL_BENCHMARKS, null, 2)}
+
+CURRENT DRAFT:
+Title: "${title || 'Draft'}"
+Format: "${format || 'general'}"
+Content:
+"""
+${text}
+"""
+
+TASK:
+1. Provide a "consistencyScore" from 0 to 100 measuring linguistic and stylistic alignment with our benchmark voice.
+2. Evaluate:
+   - sentenceCadenceScore (0-100)
+   - activeVoicePercentage (0-100)
+   - empiricalDensityScore (0-100)
+   - confidenceScore (0-100)
+3. Provide 3 specific linguistic suggestions highlighting exact phrases in the draft that diverge from top-performing content, showing:
+   - currentPhrase
+   - proposedPhrase
+   - linguisticReason (clear explanation of rhetorical rhythm, tone, or active voice)
+   - impactDimension ('cadence' | 'active_voice' | 'empirical_weight' | 'tonal_calm')
+
+Output pure JSON matching:
+{
+  "consistencyScore": 0,
+  "linguisticMetrics": {
+    "sentenceCadenceScore": 0,
+    "activeVoicePercentage": 0,
+    "empiricalDensityScore": 0,
+    "confidenceScore": 0
+  },
+  "comparisonVsBenchmark": {
+    "avgSentenceLengthCurrent": ${avgSentenceLength},
+    "avgSentenceLengthBenchmark": ${closestBenchmark.metrics.avgSentenceLen},
+    "lexicalDiversityCurrent": ${lexicalDiversity},
+    "lexicalDiversityBenchmark": ${closestBenchmark.metrics.lexicalDiversity}
+  },
+  "closestBenchmark": {
+    "title": "${closestBenchmark.title}",
+    "format": "${closestBenchmark.format}",
+    "performanceHighlight": "${closestBenchmark.performance}",
+    "keyStylisticPattern": "${closestBenchmark.pattern}"
+  },
+  "linguisticSuggestions": [
+    {
+      "id": "ling-1",
+      "headline": "string",
+      "currentPhrase": "string",
+      "proposedPhrase": "string",
+      "linguisticReason": "string",
+      "impactDimension": "cadence"
+    }
+  ]
+}
+`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+          config: { responseMimeType: 'application/json' },
+        });
+
+        const raw = response.text?.trim() || '{}';
+        return res.json(JSON.parse(raw));
+      } catch (geminiErr) {
+        console.warn('AI voice similarity failed, fallback to heuristic engine');
+      }
+    }
+
+    // Heuristic calculation
+    const cadenceDiff = Math.abs(avgSentenceLength - closestBenchmark.metrics.avgSentenceLen);
+    const cadenceScore = Math.max(40, Math.round(100 - cadenceDiff * 4));
+    const consistencyScore = Math.round(cadenceScore * 0.35 + activeVoicePercent * 0.35 + 85 * 0.3);
+
+    return res.json({
+      consistencyScore,
+      linguisticMetrics: {
+        sentenceCadenceScore: cadenceScore,
+        activeVoicePercentage: activeVoicePercent,
+        empiricalDensityScore: 82,
+        confidenceScore: 86,
+      },
+      comparisonVsBenchmark: {
+        avgSentenceLengthCurrent: avgSentenceLength,
+        avgSentenceLengthBenchmark: closestBenchmark.metrics.avgSentenceLen,
+        lexicalDiversityCurrent: lexicalDiversity,
+        lexicalDiversityBenchmark: closestBenchmark.metrics.lexicalDiversity,
+      },
+      closestBenchmark: {
+        title: closestBenchmark.title,
+        format: closestBenchmark.format,
+        performanceHighlight: closestBenchmark.performance,
+        keyStylisticPattern: closestBenchmark.pattern,
+      },
+      linguisticSuggestions: [
+        {
+          id: 'ling-1',
+          headline: 'Elevate Empirical Weight Over Vague Adjectives',
+          currentPhrase: 'revolutionary miraculous system',
+          proposedPhrase: 'high-assurance governance architecture backed by multi-region failover',
+          linguisticReason: 'Our top-performing releases lead with operational engineering specifications rather than empty hyperbolic adjectives.',
+          impactDimension: 'empirical_weight',
+        },
+        {
+          id: 'ling-2',
+          headline: 'Convert Speculative Claims to Calibrated SLAs',
+          currentPhrase: '100% bug-free guarantee and is completely unhackable',
+          proposedPhrase: 'engineered for 99.99% tested availability with continuous human oversight',
+          linguisticReason: 'High-performing publications establish credibility through verifiable SLAs instead of legally indefensible absolute guarantees.',
+          impactDimension: 'tonal_calm',
+        },
+        {
+          id: 'ling-3',
+          headline: 'Replace Passive Hype with Active Outcome Cadence',
+          currentPhrase: 'act now or get left in the dust',
+          proposedPhrase: 'empowers enterprise operations teams to maintain provable compliance at scale',
+          linguisticReason: 'Top benchmark copy speaks with grounded confidence rather than artificial urgency or FOMO pressure.',
+          impactDimension: 'cadence',
+        }
+      ],
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Voice similarity analysis failed' });
   }
 });
 

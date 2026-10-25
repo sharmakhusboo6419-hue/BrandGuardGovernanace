@@ -55,6 +55,23 @@ export interface CategoryScore {
   count: number;
 }
 
+export interface ToneVoiceMetrics {
+  authority: number; // 0-100
+  accessibility: number; // 0-100
+  hypeLevel: number; // 0-100
+  calmConfidence: number; // 0-100
+  status: 'balanced' | 'too_hype' | 'too_technical' | 'unsupported_urgency';
+}
+
+export interface VerifiedClaimMatch {
+  id: string;
+  claimPhrase: string;
+  matchedFactId?: string;
+  matchedFactClaim?: string;
+  citation?: string;
+  status: 'verified' | 'unverified' | 'unindexed';
+}
+
 export interface AuditResult {
   score: number;
   summary: string;
@@ -70,6 +87,8 @@ export interface AuditResult {
   issues: AuditIssue[];
   revisedText: string;
   readability: ReadabilityMetrics;
+  toneRadar?: ToneVoiceMetrics;
+  verifiedClaims?: VerifiedClaimMatch[];
   engine?: string;
   auditedAt: string;
 }

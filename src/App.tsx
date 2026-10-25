@@ -14,7 +14,13 @@ import { NewDraftModal } from './components/NewDraftModal';
 import { GoogleDriveModal } from './components/GoogleDriveModal';
 import { ContentDraft, UserRole, AuditResult } from './types/governance';
 import { INITIAL_DRAFTS } from './data/initialData';
-import { initAuth, setAccessToken } from './services/googleAuth';
+import { testFirestoreConnection } from './services/firebase';
+import { 
+  subscribeToDrafts, 
+  saveDraftDoc, 
+  syncUserProfile 
+} from './services/firestoreService';
+import { initAuth, googleSignIn, logout, setAccessToken } from './services/googleAuth';
 import { User as FirebaseUser } from 'firebase/auth';
 
 export default function App() {
@@ -23,6 +29,7 @@ export default function App() {
   const [currentRole, setCurrentRole] = useState<UserRole>('creator');
   const [activeView, setActiveView] = useState<'editor' | 'vault' | 'insights'>('editor');
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isWorkflowOpen, setIsWorkflowOpen] = useState<boolean>(false);
   const [isNewDraftOpen, setIsNewDraftOpen] = useState<boolean>(false);
 
@@ -33,13 +40,23 @@ export default function App() {
 
   const activeDraft = drafts.find((d) => d.id === selectedDraftId) || drafts[0];
 
+  // Test Firestore connection on boot
+  useEffect(() => {
+    testFirestoreConnection();
+  }, []);
+
   // Initialize auth listener
   useEffect(() => {
     const unsubscribe = initAuth(
-      (user, token) => {
+      async (user, token) => {
         setCurrentUser(user);
         setToken(token);
         setAccessToken(token);
+        try {
+          await syncUserProfile(user, currentRole);
+        } catch (e) {
+          console.warn('Initial user profile sync:', e);
+        }
       },
       () => {
         setCurrentUser(null);
@@ -49,6 +66,79 @@ export default function App() {
     );
     return () => unsubscribe();
   }, []);
+
+  // Sync role changes to user profile in Firestore
+  const handleRoleChange = async (newRole: UserRole) => {
+    setCurrentRole(newRole);
+    if (currentUser) {
+      try {
+        await syncUserProfile(currentUser, newRole);
+      } catch (e) {
+        console.warn('Role profile update:', e);
+      }
+    }
+  };
+
+  // Real-time Firestore synchronization for Drafts
+  useEffect(() => {
+    const unsubscribe = subscribeToDrafts(
+      async (remoteDrafts) => {
+        if (remoteDrafts.length === 0) {
+          // Seed the initial drafts into Firestore if the collection is newly initialized
+          setIsSyncing(true);
+          try {
+            for (const d of INITIAL_DRAFTS) {
+              await saveDraftDoc(d, currentUser?.uid);
+            }
+          } catch (seedErr) {
+            console.warn('Initial draft seeding notice:', seedErr);
+          } finally {
+            setIsSyncing(false);
+          }
+        } else {
+          setDrafts(remoteDrafts);
+          if (!remoteDrafts.some((d) => d.id === selectedDraftId) && remoteDrafts.length > 0) {
+            setSelectedDraftId(remoteDrafts[0].id);
+          }
+        }
+      },
+      (err) => {
+        console.warn('Firestore subscription status:', err.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  // Google Sign-In with Firebase Auth
+  const handleGoogleSignIn = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await googleSignIn();
+      if (res) {
+        setCurrentUser(res.user);
+        setToken(res.accessToken);
+        setAccessToken(res.accessToken);
+        await syncUserProfile(res.user, currentRole);
+      }
+    } catch (err) {
+      console.error('Google Sign-in error:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Sign out
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      setCurrentUser(null);
+      setToken(null);
+      setAccessToken(null);
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+  };
 
   // Helper to run audit against the backend server
   const runAuditForDraft = async (targetDraft: ContentDraft) => {
@@ -74,27 +164,33 @@ export default function App() {
       const result: AuditResult = await response.json();
       result.auditedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Update target draft with audit result
+      const updatedDraft: ContentDraft = {
+        ...targetDraft,
+        auditResult: result,
+        updatedAt: new Date().toISOString(),
+        history: [
+          {
+            id: `audit-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            authorName: 'Aegis Sentinel Engine',
+            action: 'Automated Audit',
+            description: `Audit completed: Score ${result.score}/100 with ${result.issues.length} detected items.`,
+          },
+          ...targetDraft.history,
+        ],
+      };
+
+      // Update local state
       setDrafts((prev) =>
-        prev.map((d) =>
-          d.id === targetDraft.id
-            ? {
-                ...d,
-                auditResult: result,
-                history: [
-                  {
-                    id: `audit-${Date.now()}`,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    authorName: 'Aegis Sentinel Engine',
-                    action: 'Automated Audit',
-                    description: `Audit completed: Score ${result.score}/100 with ${result.issues.length} detected items.`,
-                  },
-                  ...d.history,
-                ],
-              }
-            : d
-        )
+        prev.map((d) => (d.id === targetDraft.id ? updatedDraft : d))
       );
+
+      // Persist to Firestore
+      try {
+        await saveDraftDoc(updatedDraft, currentUser?.uid);
+      } catch (err) {
+        console.warn('Firestore draft update save:', err);
+      }
     } catch (err) {
       console.error('Audit execution error:', err);
     } finally {
@@ -110,26 +206,51 @@ export default function App() {
     }
   }, []);
 
-  const handleUpdateDraft = (updated: Partial<ContentDraft>) => {
+  const handleUpdateDraft = async (updated: Partial<ContentDraft>) => {
+    const updatedDraft: ContentDraft = {
+      ...activeDraft,
+      ...updated,
+      updatedAt: new Date().toISOString(),
+    };
+
     setDrafts((prev) =>
-      prev.map((d) => (d.id === activeDraft.id ? { ...d, ...updated } : d))
+      prev.map((d) => (d.id === activeDraft.id ? updatedDraft : d))
     );
+
+    setIsSyncing(true);
+    try {
+      await saveDraftDoc(updatedDraft, currentUser?.uid);
+    } catch (err) {
+      console.warn('Firestore update warning:', err);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const handleCreateDraft = (newDraft: ContentDraft) => {
+  const handleCreateDraft = async (newDraft: ContentDraft) => {
     setDrafts((prev) => [newDraft, ...prev]);
     setSelectedDraftId(newDraft.id);
     setActiveView('editor');
+
+    setIsSyncing(true);
+    try {
+      await saveDraftDoc(newDraft, currentUser?.uid);
+    } catch (err) {
+      console.warn('Firestore draft creation save:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+
     // Run initial audit on newly staged draft
     runAuditForDraft(newDraft);
   };
 
   // Handle importing draft from Google Drive
-  const handleImportFromDrive = (imported: Partial<ContentDraft>) => {
+  const handleImportFromDrive = async (imported: Partial<ContentDraft>) => {
     const newDraft: ContentDraft = {
       id: `draft-drive-${Date.now()}`,
       title: imported.title || 'Imported Drive Document',
-      format: imported.format || 'article',
+      format: (imported.format as any) || 'press_release',
       status: 'draft',
       targetAudience: 'Enterprise Readers & Stakeholders',
       author: imported.author || {
@@ -167,15 +288,25 @@ export default function App() {
     setDrafts((prev) => [newDraft, ...prev]);
     setSelectedDraftId(newDraft.id);
     setActiveView('editor');
+
+    setIsSyncing(true);
+    try {
+      await saveDraftDoc(newDraft, currentUser?.uid);
+    } catch (err) {
+      console.warn('Firestore import save:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+
     runAuditForDraft(newDraft);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
-      {/* Universal Header */}
+      {/* Universal Header with Google Auth & Firestore Indicators */}
       <Header
         currentRole={currentRole}
-        onRoleChange={setCurrentRole}
+        onRoleChange={handleRoleChange}
         activeView={activeView}
         onViewChange={setActiveView}
         onNewDraft={() => setIsNewDraftOpen(true)}
@@ -183,6 +314,10 @@ export default function App() {
         activeDraft={activeDraft}
         onOpenGoogleDrive={() => setIsDriveModalOpen(true)}
         isDriveConnected={!!(currentUser && accessToken)}
+        currentUser={currentUser}
+        onSignInWithGoogle={handleGoogleSignIn}
+        onSignOut={handleSignOut}
+        isSyncing={isSyncing}
       />
 
       {/* Main View Area */}
@@ -245,6 +380,7 @@ export default function App() {
           setCurrentUser(user);
           setToken(token);
           setAccessToken(token);
+          syncUserProfile(user, currentRole);
         }}
         onAuthLogout={() => {
           setCurrentUser(null);

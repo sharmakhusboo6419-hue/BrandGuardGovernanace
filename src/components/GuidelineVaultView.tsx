@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, 
   Search, 
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { BrandFact, TerminologyRule, BrandGuideline } from '../types/governance';
 import { BRAND_FACTS, TERMINOLOGY_RULES, BRAND_GUIDELINES } from '../data/initialData';
+import { subscribeToFacts, saveFactDoc } from '../services/firestoreService';
 
 export const GuidelineVaultView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'facts' | 'terms' | 'principles' | 'confidential'>('facts');
@@ -23,13 +24,26 @@ export const GuidelineVaultView: React.FC = () => {
   const [newVerifiedData, setNewVerifiedData] = useState('');
   const [newCitation, setNewCitation] = useState('');
 
+  // Subscribe to Firestore facts
+  useEffect(() => {
+    const unsub = subscribeToFacts(
+      (remoteFacts) => {
+        if (remoteFacts.length > 0) {
+          setFacts(remoteFacts);
+        }
+      },
+      (err) => console.warn('Facts subscription note:', err.message)
+    );
+    return () => unsub();
+  }, []);
+
   const copyCitation = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleAddFact = () => {
+  const handleAddFact = async () => {
     if (!newClaim.trim() || !newVerifiedData.trim()) return;
     const item: BrandFact = {
       id: `fact-${Date.now()}`,
@@ -40,6 +54,11 @@ export const GuidelineVaultView: React.FC = () => {
       category: 'performance',
     };
     setFacts([item, ...facts]);
+    try {
+      await saveFactDoc(item);
+    } catch (e) {
+      console.warn('Fact save notice:', e);
+    }
     setNewClaim('');
     setNewVerifiedData('');
     setNewCitation('');
