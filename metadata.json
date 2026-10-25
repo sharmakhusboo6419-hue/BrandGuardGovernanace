@@ -1,0 +1,6 @@
+{
+  "name": "Aegis Brand Governance",
+  "description": "Intelligent enterprise brand-governance platform to review pre-publication content against approved guidelines, claims, and visual standards with explainable AI corrections and collaborative approval workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
