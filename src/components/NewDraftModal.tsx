@@ -136,12 +136,15 @@ export const NewDraftModal: React.FC<NewDraftModalProps> = ({
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl overflow-y-auto max-h-[90vh] text-slate-900">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 className="text-sm font-bold text-slate-900">New Content Draft</h3>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">New Draft</h3>
+            <p className="text-slate-500 text-xs">Create a new content draft with brand governance.</p>
+          </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100"
+            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -165,6 +168,11 @@ export const NewDraftModal: React.FC<NewDraftModalProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Preview */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4">
+            <p className="text-slate-500 text-sm line-clamp-3">{title}. {text.substring(0, 80)}...</p>
           </div>
 
           {/* Title */}
@@ -241,6 +249,7 @@ export const NewDraftModal: React.FC<NewDraftModalProps> = ({
               required
             />
           </div>
+<p className="text-slate-500 text-sm mt-1">{text.length} characters</p>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
