@@ -74,17 +74,17 @@ export const DraftList: React.FC<DraftListProps> = ({
   };
 
   return (
-    <div className="w-76 border-r border-slate-200 bg-white flex flex-col h-[calc(100vh-3.75rem)] select-none">
+    <div className="w-76 border-r border-slate-200 bg-[#fbfcfc] flex flex-col h-[calc(100vh-3.75rem)] select-none">
       {/* Search and Filter */}
       <div className="p-3 border-b border-slate-200 space-y-2">
-        <div className="relative">
+        <div className="relative group">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
           <input
             type="text"
             placeholder="Search drafts..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+            className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 transition-all"
           />
         </div>
 
@@ -94,7 +94,7 @@ export const DraftList: React.FC<DraftListProps> = ({
             onClick={() => setFormatFilter('all')}
             className={`px-2 py-1 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
               formatFilter === 'all'
-                ? 'bg-slate-100 text-slate-900 font-semibold'
+                ? 'bg-teal-50 text-teal-900 font-semibold'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -150,8 +150,8 @@ export const DraftList: React.FC<DraftListProps> = ({
                 onClick={() => onSelectDraft(draft.id)}
                 className={`p-3 cursor-pointer transition-colors border-l-2 text-left ${
                   isSelected
-                    ? 'bg-blue-50/50 border-blue-600'
-                    : 'border-transparent hover:bg-slate-50'
+                    ? 'bg-teal-50/70 border-teal-600 shadow-[inset_3px_0_0_#0f766e]'
+                    : 'border-transparent hover:bg-white hover:shadow-[0_1px_8px_rgba(23,33,43,0.05)]'
                 }`}
               >
                 {/* Format and Status */}
@@ -207,7 +207,7 @@ export const DraftList: React.FC<DraftListProps> = ({
       </div>
 
       {/* Footer count */}
-      <div className="p-2.5 border-t border-slate-200 bg-slate-50 text-[11px] text-slate-500 flex items-center justify-between">
+      <div className="p-2.5 border-t border-slate-200 bg-white text-[11px] text-slate-500 flex items-center justify-between">
         <span>{filteredDrafts.length} drafts</span>
         <button
           onClick={onNewDraft}

@@ -287,7 +287,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.75rem)] overflow-hidden bg-slate-50">
+    <div className="flex-1 flex flex-col h-[calc(100vh-3.75rem)] overflow-hidden bg-[#f3f6f8]">
       {/* Top Draft Control Header */}
       <div className="border-b border-slate-200 bg-white px-6 py-2.5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -383,7 +383,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
       {/* Main Workspace: 2-column Layout */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Column: Editor & Visual Assets */}
-        <div className="flex-1 flex flex-col border-r border-slate-200 bg-slate-50 overflow-y-auto">
+        <div className="flex-1 flex flex-col border-r border-slate-200 bg-[#f8fafb] overflow-y-auto">
           {/* Subheader tabs: Editor vs Interactive Canvas vs Visual Assets */}
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-2 bg-white">
             <div className="flex items-center gap-2">

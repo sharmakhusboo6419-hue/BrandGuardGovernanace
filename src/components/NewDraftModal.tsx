@@ -249,7 +249,7 @@ export const NewDraftModal: React.FC<NewDraftModalProps> = ({
               required
             />
           </div>
-<p className="text-slate-500 text-sm mt-1">{text.length} characters</p>
+          <p className="text-slate-500 text-sm mt-1">{text.length} characters</p>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
