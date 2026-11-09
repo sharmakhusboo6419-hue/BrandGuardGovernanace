@@ -66,8 +66,8 @@ export const GuidelineVaultView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.75rem)] overflow-y-auto bg-slate-50 p-6 md:p-8">
-      <div className="max-w-5xl mx-auto w-full space-y-5">
+    <div className="page-shell flex-1 flex flex-col h-[calc(100vh-4.25rem)] overflow-y-auto">
+      <div className="content-frame space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
           <div>
@@ -151,7 +151,7 @@ export const GuidelineVaultView: React.FC = () => {
               .map((fact) => (
                 <div
                   key={fact.id}
-                  className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-xs flex flex-col justify-between"
+                  className="panel p-5 space-y-3 flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
@@ -194,7 +194,7 @@ export const GuidelineVaultView: React.FC = () => {
               .map((rule) => (
                 <div
                   key={rule.id}
-                  className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-start justify-between gap-3 shadow-xs"
+                  className="panel p-5 flex flex-col md:flex-row md:items-start justify-between gap-4"
                 >
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
@@ -234,7 +234,7 @@ export const GuidelineVaultView: React.FC = () => {
             {guidelines.map((guide) => (
               <div
                 key={guide.id}
-                className="bg-white border border-slate-200 rounded-xl p-4 space-y-2.5 shadow-xs"
+                className="panel p-5 space-y-3"
               >
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-blue-700 font-semibold">

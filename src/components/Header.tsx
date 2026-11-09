@@ -47,10 +47,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="border-b border-slate-200/90 bg-white/90 backdrop-blur-md sticky top-0 z-40 shadow-[0_1px_0_rgba(15,118,110,0.04)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-15">
+      <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-4 min-h-[4.25rem] py-2">
           {/* Brand Identity */}
-          <div className="flex items-center space-x-6">
+          <div className="flex min-w-0 items-center gap-4 lg:gap-6">
             <div 
               className="flex items-center space-x-2.5 cursor-pointer select-none" 
               onClick={() => onViewChange('editor')}
@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="w-8 h-8 rounded-lg bg-teal-700 flex items-center justify-center text-white shadow-[0_4px_10px_rgba(15,118,110,0.2)]">
                 <ShieldCheck className="w-4 h-4" />
               </div>
-              <span className="text-sm font-bold tracking-tight text-slate-900">
+              <span className="hidden sm:inline text-sm font-bold tracking-tight text-slate-900">
                 Aegis <span className="text-slate-500 font-normal">Governance</span>
               </span>
             </div>
@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Right Actions: Role Switcher, Google Drive & Primary Buttons */}
-          <div className="flex items-center space-x-2.5">
+          <div className="flex shrink-0 items-center gap-2 lg:gap-2.5">
             {/* Google Drive Status Button */}
             <button
               onClick={onOpenGoogleDrive}
@@ -119,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {/* Role Switcher */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <div className="hidden lg:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
               <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold px-2 hidden sm:inline">
                 Role
               </span>

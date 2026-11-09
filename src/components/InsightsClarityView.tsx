@@ -44,8 +44,8 @@ export const InsightsClarityView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.75rem)] overflow-y-auto bg-slate-50 p-6 md:p-8">
-      <div className="max-w-5xl mx-auto w-full space-y-5">
+    <div className="page-shell flex-1 flex flex-col h-[calc(100vh-4.25rem)] overflow-y-auto">
+      <div className="content-frame space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
           <div>
@@ -67,7 +67,7 @@ export const InsightsClarityView: React.FC = () => {
 
         {/* Top Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+          <div className="panel p-5">
             <span className="text-[11px] text-slate-500 block">Total Audits</span>
             <div className="text-2xl font-bold text-slate-900 mt-1">
               {RECURRING_MISTAKES_DATA.totalAuditsRan}
@@ -75,7 +75,7 @@ export const InsightsClarityView: React.FC = () => {
             <span className="text-[10px] text-emerald-700 block mt-1">+28% this month</span>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+          <div className="panel p-5">
             <span className="text-[11px] text-slate-500 block">Initial Draft Quality</span>
             <div className="text-2xl font-bold text-amber-700 mt-1">
               {RECURRING_MISTAKES_DATA.averageInitialScore} <span className="text-xs text-slate-400 font-normal">/ 100</span>
@@ -83,7 +83,7 @@ export const InsightsClarityView: React.FC = () => {
             <span className="text-[10px] text-slate-400 block mt-1">First-pass average</span>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+          <div className="panel p-5">
             <span className="text-[11px] text-slate-500 block">Post-Review Score</span>
             <div className="text-2xl font-bold text-emerald-700 mt-1">
               {RECURRING_MISTAKES_DATA.averageFinalScore} <span className="text-xs text-slate-400 font-normal">/ 100</span>
@@ -95,7 +95,7 @@ export const InsightsClarityView: React.FC = () => {
         {/* Two Columns: Category Breakdown & Source Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Most Frequent Violations Breakdown */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
+          <div className="panel p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <h3 className="text-xs font-bold text-slate-900">Frequent Violations</h3>
               <span className="text-[11px] text-slate-400">Past 90 Days</span>
@@ -128,7 +128,7 @@ export const InsightsClarityView: React.FC = () => {
           </div>
 
           {/* Author Source Distribution */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
+          <div className="panel p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <h3 className="text-xs font-bold text-slate-900">Draft Origin Breakdown</h3>
               <span className="text-[11px] text-slate-400">AI vs Agency vs Internal</span>
@@ -173,7 +173,7 @@ export const InsightsClarityView: React.FC = () => {
         </div>
 
         {/* Guideline Clarity Index */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
+        <div className="panel p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900">

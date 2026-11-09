@@ -302,7 +302,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-[#f3f6f8] text-slate-900 flex flex-col font-sans">
       {/* Universal Header with Google Auth & Firestore Indicators */}
       <Header
         currentRole={currentRole}
@@ -321,7 +321,7 @@ export default function App() {
       />
 
       {/* Main View Area */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex min-w-0 overflow-hidden">
         {activeView === 'editor' && (
           <>
             <DraftList
