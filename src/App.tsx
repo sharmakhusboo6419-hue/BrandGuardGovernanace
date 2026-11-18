@@ -385,12 +385,6 @@ export default function App() {
       />
 
       {/* Main View Area */}
-      {firestoreError && (
-        <div role="status" className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-xs text-amber-950">
-          <span><strong>Local mode:</strong> cloud sync is unavailable, so changes remain safe in this browser.</span>
-          <button onClick={() => window.location.reload()} className="font-semibold underline underline-offset-2 hover:no-underline">Retry connection</button>
-        </div>
-      )}
       <main className="flex-1 flex min-w-0 overflow-auto lg:overflow-hidden flex-col lg:flex-row">
         {activeView === 'editor' && (
           <>
