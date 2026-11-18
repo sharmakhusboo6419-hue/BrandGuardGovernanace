@@ -102,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
             </nav>
           </div>
 
-          {/* Right Actions: Role Switcher, Google Drive & Primary Buttons */}
+          {/* Keep secondary workspace controls available without competing with the primary actions. */}
           <div className="hidden lg:flex shrink-0 items-center gap-2 lg:gap-2.5">
             {/* Google Drive Status Button */}
             <button
@@ -120,49 +120,32 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* Role Switcher */}
-            <div className="hidden lg:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold px-2 hidden sm:inline">
-                Role
-              </span>
-              <button
-                onClick={() => onRoleChange('creator')}
-                className={`px-2 py-1 text-xs font-medium rounded-md transition-all ${
-                  currentRole === 'creator'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Creator
-              </button>
-              <button
-                onClick={() => onRoleChange('reviewer')}
-                className={`px-2 py-1 text-xs font-medium rounded-md transition-all ${
-                  currentRole === 'reviewer'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Reviewer
-              </button>
-              <button
-                onClick={() => onRoleChange('brand_manager')}
-                className={`px-2 py-1 text-xs font-medium rounded-md transition-all ${
-                  currentRole === 'brand_manager'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Manager
-              </button>
-            </div>
-
-            {/* Firestore Persistence Status */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md">
-              <Database className="w-3 h-3 text-blue-600" />
-              <span>{isSyncing ? 'Syncing...' : hasFirestoreError ? 'Local mode' : 'Firestore'}</span>
-              <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-amber-400 animate-pulse' : hasFirestoreError ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-            </div>
+            <details className="relative">
+              <summary className="cursor-pointer list-none rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                Workspace
+              </summary>
+              <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Role</p>
+                <div className="flex gap-1 rounded-lg bg-slate-50 p-1">
+                  {(['creator', 'reviewer', 'brand_manager'] as UserRole[]).map((role) => (
+                    <button
+                      key={role}
+                      onClick={() => onRoleChange(role)}
+                      className={`flex-1 rounded-md px-2 py-1 text-[11px] font-medium ${
+                        currentRole === role ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      {role === 'brand_manager' ? 'Manager' : role[0].toUpperCase() + role.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
+                  <Database className="h-3 w-3 text-teal-700" />
+                  <span>{isSyncing ? 'Syncing changes' : hasFirestoreError ? 'Local mode' : 'Synced to Firestore'}</span>
+                  <span className={`ml-auto h-1.5 w-1.5 rounded-full ${isSyncing ? 'bg-amber-400 animate-pulse' : hasFirestoreError ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                </div>
+              </div>
+            </details>
 
             {/* Google Authentication */}
             {currentUser ? (

@@ -74,9 +74,9 @@ export const DraftList: React.FC<DraftListProps> = ({
   };
 
   return (
-    <aside className="app-draft-list w-full lg:w-72 xl:w-80 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-[#fffdf9] flex flex-col h-auto lg:h-[calc(100vh-4.75rem)] max-h-[19rem] lg:max-h-none select-none">
+    <aside className="app-draft-list w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white flex flex-col h-auto lg:h-[calc(100vh-4.75rem)] max-h-[19rem] lg:max-h-none select-none">
       {/* Search and Filter */}
-      <div className="p-5 border-b border-slate-200 space-y-3.5">
+      <div className="p-4 border-b border-slate-200 space-y-3">
         <div className="relative group">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
           <input
@@ -84,7 +84,7 @@ export const DraftList: React.FC<DraftListProps> = ({
             placeholder="Search drafts..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 transition-all"
+            className="w-full bg-slate-50 border border-slate-200 rounded-md pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 transition-all"
           />
         </div>
 
@@ -92,7 +92,7 @@ export const DraftList: React.FC<DraftListProps> = ({
         <div className="flex items-center gap-1 overflow-x-auto text-xs pb-0.5">
           <button
             onClick={() => setFormatFilter('all')}
-            className={`px-2 py-1 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${
               formatFilter === 'all'
                 ? 'bg-teal-50 text-teal-900 font-semibold'
                 : 'text-slate-500 hover:text-slate-800'
@@ -102,7 +102,7 @@ export const DraftList: React.FC<DraftListProps> = ({
           </button>
           <button
             onClick={() => setFormatFilter('press_release')}
-            className={`px-2 py-1 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${
               formatFilter === 'press_release'
                 ? 'bg-teal-50 text-teal-900 font-semibold'
                 : 'text-slate-500 hover:text-slate-800'
@@ -112,7 +112,7 @@ export const DraftList: React.FC<DraftListProps> = ({
           </button>
           <button
             onClick={() => setFormatFilter('social_carousel')}
-            className={`px-2 py-1 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${
               formatFilter === 'social_carousel'
                 ? 'bg-teal-50 text-teal-900 font-semibold'
                 : 'text-slate-500 hover:text-slate-800'
@@ -122,7 +122,7 @@ export const DraftList: React.FC<DraftListProps> = ({
           </button>
           <button
             onClick={() => setFormatFilter('landing_page')}
-            className={`px-2 py-1 rounded text-[11px] font-medium whitespace-nowrap transition-colors ${
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${
               formatFilter === 'landing_page'
                 ? 'bg-teal-50 text-teal-900 font-semibold'
                 : 'text-slate-500 hover:text-slate-800'
@@ -148,14 +148,14 @@ export const DraftList: React.FC<DraftListProps> = ({
               <div
                 key={draft.id}
                 onClick={() => onSelectDraft(draft.id)}
-                className={`px-4 py-4 cursor-pointer transition-colors border-l-2 text-left ${
+                className={`px-4 py-3.5 cursor-pointer transition-colors border-l-2 text-left ${
                   isSelected
-                    ? 'bg-teal-50/70 border-teal-600 shadow-[inset_3px_0_0_#e77b5d]'
-                    : 'border-transparent hover:bg-white hover:shadow-[0_1px_8px_rgba(23,33,43,0.05)]'
+                    ? 'bg-teal-50/70 border-teal-600'
+                    : 'border-transparent hover:bg-slate-50'
                 }`}
               >
                 {/* Format and Status */}
-                <div className="flex items-center justify-between text-[11px] mb-1">
+                <div className="flex items-center justify-between text-xs mb-1">
                   <div className="flex items-center gap-1.5 text-slate-600">
                     {getFormatIcon(draft.format)}
                     <span className="font-medium">{formatFormatName(draft.format)}</span>

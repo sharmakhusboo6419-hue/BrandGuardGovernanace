@@ -250,11 +250,11 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
   const getSeverityBadge = (sev: IssueSeverity) => {
     switch (sev) {
       case 'critical':
-        return <span className="text-rose-600 font-semibold">Critical</span>;
+        return <span className="text-rose-700 text-xs font-bold">Critical</span>;
       case 'warning':
-        return <span className="text-amber-600 font-semibold">Warning</span>;
+        return <span className="text-amber-700 text-xs font-bold">Warning</span>;
       case 'suggestion':
-        return <span className="text-blue-600 font-semibold">Suggestion</span>;
+        return <span className="text-blue-700 text-xs font-bold">Suggestion</span>;
     }
   };
 
@@ -291,7 +291,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
   return (
     <div className="app-editor flex-1 flex min-w-0 flex-col h-[calc(100vh-4.75rem)] overflow-hidden bg-[#f7f5f0]">
       {/* Top Draft Control Header */}
-      <div className="border-b border-slate-200 bg-white px-4 py-5 sm:px-6 lg:px-8">
+      <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
           {/* Title and metadata */}
           <div className="space-y-1 min-w-0 xl:max-w-[36%]">
@@ -313,41 +313,32 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
 
           {/* Action Bar */}
           <div className="flex flex-1 items-center justify-start xl:justify-end gap-2 flex-wrap">
-            {/* Live Multi-Channel Simulator Button */}
-            <button
-              onClick={() => setIsSimulatorOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
-              title="Preview simulated publication on LinkedIn, PR Wire, Web or Email"
-            >
-              <Eye className="w-3.5 h-3.5 text-blue-600" />
-              <span>Channel Preview</span>
-            </button>
-
-            {/* Sanitized Agency Copy Generator */}
-            <button
-              onClick={() => setIsRedactionModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
-              title="Generate sanitized copy scrubbing internal codenames for outside agencies"
-            >
-              <Lock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Redacted Copy</span>
-            </button>
-
-            {/* Diff toggle */}
-            {draft.previousVersionText && (
-              <button
-                onClick={() => setShowDiff(!showDiff)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                  showDiff
-                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                    : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <SplitSquareVertical className="w-3.5 h-3.5" />
-                <span>{showDiff ? 'Hide Diff' : 'Compare Diff'}</span>
-              </button>
-            )}
-
+            <details className="relative order-2 xl:order-1">
+              <summary className="cursor-pointer list-none rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                More actions
+              </summary>
+              <div className="absolute right-0 top-full z-30 mt-2 flex min-w-48 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                <button onClick={() => setIsSimulatorOpen(true)} className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50">
+                  <Eye className="h-3.5 w-3.5 text-teal-700" /> Channel preview
+                </button>
+                <button onClick={() => setIsRedactionModalOpen(true)} className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50">
+                  <Lock className="h-3.5 w-3.5 text-slate-500" /> Redacted copy
+                </button>
+                {draft.previousVersionText && (
+                  <button
+                    onClick={() => setShowDiff(!showDiff)}
+                    className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                  >
+                    <SplitSquareVertical className="h-3.5 w-3.5" /> {showDiff ? 'Hide diff' : 'Compare diff'}
+                  </button>
+                )}
+                {onOpenGoogleDrive && (
+                  <button onClick={onOpenGoogleDrive} className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50">
+                    <HardDrive className="h-3.5 w-3.5 text-teal-700" /> Drive
+                  </button>
+                )}
+              </div>
+            </details>
             {/* Run Intelligent Audit Button */}
             <button
               onClick={onRunAudit}
@@ -367,17 +358,6 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
               <span>Workflow ({draft.comments.length})</span>
             </button>
 
-            {/* Google Drive Action Button */}
-            {onOpenGoogleDrive && (
-              <button
-                onClick={onOpenGoogleDrive}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
-                title="Google Drive import and save"
-              >
-                <HardDrive className="w-3.5 h-3.5 text-blue-600" />
-                <span>Drive</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -661,7 +641,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
         </div>
 
         {/* Right Column: Multi-Tab Governance Inspector */}
-        <div className="w-full lg:w-[440px] bg-white flex flex-col border-l border-slate-200 overflow-hidden">
+        <div className="w-full lg:w-[min(34vw,480px)] lg:min-w-[420px] bg-white flex flex-col border-l border-slate-200 overflow-hidden">
           {/* Audit Score Header */}
           <div className="p-4 border-b border-slate-200 bg-slate-50/60">
             <div className="flex items-start justify-between">
@@ -692,14 +672,14 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
 
               {/* Counts */}
               <div className="text-right text-[11px] text-slate-500 space-y-0.5">
-                <div>
-                  <span className="text-rose-600 font-semibold">{criticalIssues.length}</span> Critical
+                <div className="text-xs font-medium text-slate-700">
+                  <span className="text-rose-700 font-bold">{criticalIssues.length}</span> Critical
                 </div>
-                <div>
-                  <span className="text-amber-600 font-semibold">{warningIssues.length}</span> Warnings
+                <div className="text-xs font-medium text-slate-700">
+                  <span className="text-amber-700 font-bold">{warningIssues.length}</span> Warnings
                 </div>
-                <div>
-                  <span className="text-blue-600 font-semibold">{suggestionIssues.length}</span> Suggestions
+                <div className="text-xs font-medium text-slate-700">
+                  <span className="text-blue-700 font-bold">{suggestionIssues.length}</span> Suggestions
                 </div>
               </div>
             </div>
@@ -820,8 +800,22 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/30">
                 {!audit ? (
-                  <div className="py-12 text-center text-xs text-slate-400">
-                    Click "Run Audit" to analyze content against guidelines.
+                  <div className="rounded-xl border border-dashed border-teal-200 bg-teal-50/60 p-5 text-left">
+                    <div className="mb-2 flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-teal-700" />
+                      <h3 className="text-sm font-semibold text-slate-900">Ready for a governance check</h3>
+                    </div>
+                    <p className="mb-4 text-xs leading-relaxed text-slate-600">
+                      Run an audit to review this draft for the signals that matter before it reaches a channel.
+                    </p>
+                    <div className="space-y-2 border-t border-teal-100 pt-3 text-xs font-medium text-slate-700">
+                      <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> Unsupported claims and risky promises</div>
+                      <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Brand terminology and tone</div>
+                      <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-teal-600" /> Facts, readability, and accessibility</div>
+                    </div>
+                    <button onClick={onRunAudit} disabled={isAuditing} className="mt-4 w-full rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-60">
+                      {isAuditing ? 'Auditing draft…' : 'Run audit to see results'}
+                    </button>
                   </div>
                 ) : filteredIssues.length === 0 ? (
                   <div className="py-10 text-center text-xs text-slate-500">

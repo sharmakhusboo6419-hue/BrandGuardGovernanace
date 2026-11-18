@@ -147,6 +147,7 @@ export default function App() {
               await saveDraftDoc(d, currentUser?.uid);
             }
           } catch (seedErr) {
+            setFirestoreError(true);
             console.warn('Initial draft seeding notice:', seedErr);
           } finally {
             setIsSyncing(false);
@@ -248,6 +249,7 @@ export default function App() {
       try {
         await saveDraftDoc(updatedDraft, currentUser?.uid);
       } catch (err) {
+        setFirestoreError(true);
         console.warn('Firestore draft update save:', err);
       }
     } catch {
@@ -280,6 +282,7 @@ export default function App() {
     try {
       await saveDraftDoc(updatedDraft, currentUser?.uid);
     } catch (err) {
+      setFirestoreError(true);
       console.warn('Firestore update warning:', err);
     } finally {
       setIsSyncing(false);
@@ -295,6 +298,7 @@ export default function App() {
     try {
       await saveDraftDoc(newDraft, currentUser?.uid);
     } catch (err) {
+      setFirestoreError(true);
       console.warn('Firestore draft creation save:', err);
     } finally {
       setIsSyncing(false);
@@ -381,6 +385,12 @@ export default function App() {
       />
 
       {/* Main View Area */}
+      {firestoreError && (
+        <div role="status" className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-xs text-amber-950">
+          <span><strong>Local mode:</strong> cloud sync is unavailable, so changes remain safe in this browser.</span>
+          <button onClick={() => window.location.reload()} className="font-semibold underline underline-offset-2 hover:no-underline">Retry connection</button>
+        </div>
+      )}
       <main className="flex-1 flex min-w-0 overflow-auto lg:overflow-hidden flex-col lg:flex-row">
         {activeView === 'editor' && (
           <>
