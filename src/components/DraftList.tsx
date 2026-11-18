@@ -74,9 +74,9 @@ export const DraftList: React.FC<DraftListProps> = ({
   };
 
   return (
-    <div className="w-72 xl:w-80 shrink-0 border-r border-slate-200 bg-[#fbfcfc] flex flex-col h-[calc(100vh-4.25rem)] select-none">
+    <aside className="app-draft-list w-full lg:w-72 xl:w-80 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-[#fffdf9] flex flex-col h-auto lg:h-[calc(100vh-4.75rem)] max-h-[19rem] lg:max-h-none select-none">
       {/* Search and Filter */}
-      <div className="p-4 border-b border-slate-200 space-y-3">
+      <div className="p-5 border-b border-slate-200 space-y-3.5">
         <div className="relative group">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
           <input
@@ -134,7 +134,7 @@ export const DraftList: React.FC<DraftListProps> = ({
       </div>
 
       {/* Drafts List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100">
         {filteredDrafts.length === 0 ? (
           <div className="p-6 text-center text-xs text-slate-400">
             No drafts found.
@@ -150,7 +150,7 @@ export const DraftList: React.FC<DraftListProps> = ({
                 onClick={() => onSelectDraft(draft.id)}
                 className={`px-4 py-4 cursor-pointer transition-colors border-l-2 text-left ${
                   isSelected
-                    ? 'bg-teal-50/70 border-teal-600 shadow-[inset_3px_0_0_#0f766e]'
+                    ? 'bg-teal-50/70 border-teal-600 shadow-[inset_3px_0_0_#e77b5d]'
                     : 'border-transparent hover:bg-white hover:shadow-[0_1px_8px_rgba(23,33,43,0.05)]'
                 }`}
               >
@@ -207,7 +207,7 @@ export const DraftList: React.FC<DraftListProps> = ({
       </div>
 
       {/* Footer count */}
-      <div className="p-2.5 border-t border-slate-200 bg-white text-[11px] text-slate-500 flex items-center justify-between">
+      <div className="p-2.5 border-t border-slate-200 bg-white text-[11px] text-slate-500 flex items-center justify-between shrink-0">
         <span>{filteredDrafts.length} drafts</span>
         <button
           onClick={onNewDraft}
@@ -217,6 +217,6 @@ export const DraftList: React.FC<DraftListProps> = ({
           <span>New</span>
         </button>
       </div>
-    </div>
+    </aside>
   );
 };

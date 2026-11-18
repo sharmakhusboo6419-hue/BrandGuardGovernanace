@@ -40,6 +40,7 @@ interface EditorAuditViewProps {
   onUpdateDraft: (updated: Partial<ContentDraft>) => void;
   onRunAudit: () => Promise<void>;
   isAuditing: boolean;
+  auditError?: string | null;
   onOpenWorkflow: () => void;
   onOpenVault: () => void;
   onOpenGoogleDrive?: () => void;
@@ -51,6 +52,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
   onUpdateDraft,
   onRunAudit,
   isAuditing,
+  auditError,
   onOpenWorkflow,
   onOpenVault,
   onOpenGoogleDrive,
@@ -287,12 +289,12 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex min-w-0 flex-col h-[calc(100vh-4.25rem)] overflow-hidden bg-[#f3f6f8]">
+    <div className="app-editor flex-1 flex min-w-0 flex-col h-[calc(100vh-4.75rem)] overflow-hidden bg-[#f7f5f0]">
       {/* Top Draft Control Header */}
-      <div className="border-b border-slate-200 bg-white px-5 py-4 lg:px-7">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="border-b border-slate-200 bg-white px-4 py-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
           {/* Title and metadata */}
-          <div className="space-y-0.5 flex-1 min-w-0">
+          <div className="space-y-1 min-w-0 xl:max-w-[36%]">
             <input
               type="text"
               value={draft.title}
@@ -300,17 +302,17 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
               className="text-base font-semibold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-teal-600 focus:outline-none w-full truncate py-0.5"
               placeholder="Draft title..."
             />
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="capitalize">{draft.format.replace('_', ' ')}</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 leading-relaxed">
+              <span className="capitalize whitespace-nowrap">{draft.format.replace('_', ' ')}</span>
               <span aria-hidden="true">·</span>
-              <span>Audience: {draft.targetAudience}</span>
+              <span className="truncate">Audience: {draft.targetAudience}</span>
               <span aria-hidden="true">·</span>
-              <span>Author: {draft.author.name}</span>
+              <span className="truncate">Author: {draft.author.name}</span>
             </div>
           </div>
 
           {/* Action Bar */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-1 items-center justify-start xl:justify-end gap-2 flex-wrap">
             {/* Live Multi-Channel Simulator Button */}
             <button
               onClick={() => setIsSimulatorOpen(true)}
@@ -350,7 +352,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
             <button
               onClick={onRunAudit}
               disabled={isAuditing}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 disabled:opacity-50 rounded-lg shadow-[0_3px_8px_rgba(15,118,110,0.2)] transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 disabled:opacity-50 rounded-lg shadow-[0_4px_10px_rgba(39,58,120,0.24)] transition-all"
             >
               <Sparkles className={`w-3.5 h-3.5 ${isAuditing ? 'animate-spin' : ''}`} />
               <span>{isAuditing ? 'Auditing...' : 'Run Audit'}</span>
@@ -380,13 +382,20 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
         </div>
       </div>
 
+      {auditError && (
+        <div role="status" className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-xs text-amber-900 lg:px-8">
+          <span>{auditError}</span>
+          <button onClick={onRunAudit} className="font-semibold underline underline-offset-2 hover:no-underline">Retry audit</button>
+        </div>
+      )}
+
       {/* Main Workspace: 2-column Layout */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Column: Editor & Visual Assets */}
         <div className="flex-1 min-w-0 flex flex-col border-r border-slate-200 bg-[#f8fafb] overflow-y-auto">
           {/* Subheader tabs: Editor vs Interactive Canvas vs Visual Assets */}
-          <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-3 bg-white lg:px-7">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3 bg-white lg:px-7">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setActiveTab('editor')}
                 className={`px-3 py-1 text-xs font-medium border-b-2 transition-colors ${
@@ -422,7 +431,7 @@ export const EditorAuditView: React.FC<EditorAuditViewProps> = ({
             </div>
 
             {/* Readability & stats */}
-            <div className="text-xs text-slate-500 flex items-center gap-2">
+            <div className="text-xs text-slate-500 flex items-center gap-2 whitespace-nowrap">
               <span>{draft.text.split(/\s+/).filter(Boolean).length} words</span>
               <span aria-hidden="true">·</span>
               <span>{audit?.readability?.gradeLevel || 'Grade 9'}</span>

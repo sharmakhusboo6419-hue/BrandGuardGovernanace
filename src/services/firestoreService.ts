@@ -140,7 +140,13 @@ export function subscribeToDrafts(
       },
       (error) => {
         if (onError) onError(error);
-        handleFirestoreError(error, OperationType.LIST, path);
+        // Keep the local draft seed usable when rules, credentials, or network
+        // access are unavailable. The caller surfaces the degraded state.
+        console.error('Firestore subscription unavailable:', JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+          operationType: OperationType.LIST,
+          path,
+        }));
       }
     );
   } catch (error) {
@@ -253,4 +259,3 @@ export async function saveFactDoc(fact: BrandFact): Promise<void> {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
-

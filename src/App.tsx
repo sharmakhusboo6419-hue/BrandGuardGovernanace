@@ -12,7 +12,7 @@ import { GuidelineVaultView } from './components/GuidelineVaultView';
 import { InsightsClarityView } from './components/InsightsClarityView';
 import { NewDraftModal } from './components/NewDraftModal';
 import { GoogleDriveModal } from './components/GoogleDriveModal';
-import { ContentDraft, UserRole, AuditResult } from './types/governance';
+import { ContentDraft, UserRole, AuditResult, AuditIssue } from './types/governance';
 import { INITIAL_DRAFTS } from './data/initialData';
 import { testFirestoreConnection } from './services/firebase';
 import { 
@@ -23,13 +23,68 @@ import {
 import { initAuth, googleSignIn, logout, setAccessToken } from './services/googleAuth';
 import { User as FirebaseUser } from 'firebase/auth';
 
+const createLocalAudit = (draft: ContentDraft): AuditResult => {
+  const issues: AuditIssue[] = [];
+  const patterns = [
+    { regex: /100%\s*(bug-free|unhackable|secure)/i, replacement: 'enterprise-grade reliability', category: 'unsupported_claims' as const, severity: 'critical' as const },
+    { regex: /\bMagic\s+AI\b/i, replacement: 'Aegis Sentinel™ AI Engine', category: 'terminology' as const, severity: 'warning' as const },
+    { regex: /\bBlackbox\b/i, replacement: 'Transparent Governance Model', category: 'terminology' as const, severity: 'warning' as const },
+  ];
+  patterns.forEach((pattern, index) => {
+    const match = draft.text.match(pattern.regex);
+    if (match) {
+      issues.push({
+        id: `local-${index}`,
+        category: pattern.category,
+        severity: pattern.severity,
+        headline: `Review language: “${match[0]}”`,
+        flaggedText: match[0],
+        explanation: 'This local heuristic flags language that may need a brand review.',
+        suggestedReplacement: pattern.replacement,
+        brandRuleReference: 'Local governance heuristic',
+      });
+    }
+  });
+  const words = draft.text.split(/\s+/).filter(Boolean).length;
+  const categoryBreakdown = {
+    tone: { score: 96, count: 0 },
+    terminology: { score: issues.some(i => i.category === 'terminology') ? 78 : 98, count: issues.filter(i => i.category === 'terminology').length },
+    messaging: { score: 96, count: 0 },
+    unsupported_claims: { score: issues.some(i => i.category === 'unsupported_claims') ? 62 : 98, count: issues.filter(i => i.category === 'unsupported_claims').length },
+    accessibility: { score: 96, count: 0 },
+    visual_consistency: { score: 96, count: 0 },
+    confidentiality: { score: 96, count: 0 },
+  };
+  const score = Math.max(20, 100 - issues.reduce((total, issue) => total + (issue.severity === 'critical' ? 18 : 8), 0));
+  return {
+    score,
+    summary: `Local governance check completed with ${issues.length} item(s) requiring attention.`,
+    categoryBreakdown,
+    issues,
+    revisedText: draft.text,
+    readability: {
+      wordCount: words,
+      sentenceCount: Math.max(1, draft.text.split(/[.!?]+/).filter(Boolean).length),
+      readingEase: 72,
+      gradeLevel: 'Grade 9',
+      estimatedReadTimeMinutes: Math.max(1, Math.ceil(words / 220)),
+    },
+    toneRadar: { authority: 82, accessibility: 84, hypeLevel: 18, calmConfidence: 86, status: 'balanced' },
+    verifiedClaims: [],
+    engine: 'Local governance heuristic',
+    auditedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  };
+};
+
 export default function App() {
   const [drafts, setDrafts] = useState<ContentDraft[]>(INITIAL_DRAFTS);
   const [selectedDraftId, setSelectedDraftId] = useState<string>('draft-pr-01');
   const [currentRole, setCurrentRole] = useState<UserRole>('creator');
   const [activeView, setActiveView] = useState<'editor' | 'vault' | 'insights'>('editor');
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [firestoreError, setFirestoreError] = useState<boolean>(false);
   const [isWorkflowOpen, setIsWorkflowOpen] = useState<boolean>(false);
   const [isNewDraftOpen, setIsNewDraftOpen] = useState<boolean>(false);
 
@@ -83,6 +138,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = subscribeToDrafts(
       async (remoteDrafts) => {
+        setFirestoreError(false);
         if (remoteDrafts.length === 0) {
           // Seed the initial drafts into Firestore if the collection is newly initialized
           setIsSyncing(true);
@@ -103,6 +159,7 @@ export default function App() {
         }
       },
       (err) => {
+        setFirestoreError(true);
         console.warn('Firestore subscription status:', err.message);
       }
     );
@@ -143,26 +200,28 @@ export default function App() {
   // Helper to run audit against the backend server
   const runAuditForDraft = async (targetDraft: ContentDraft) => {
     setIsAuditing(true);
+    setAuditError(null);
     try {
-      const response = await fetch('/api/audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: targetDraft.title,
-          format: targetDraft.format,
-          text: targetDraft.text,
-          visualAssets: targetDraft.visualAssets,
-          targetAudience: targetDraft.targetAudience,
-          confidentialMode: targetDraft.confidentialMode,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Audit failed with status ${response.status}`);
+      let result: AuditResult;
+      if (import.meta.env.VITE_USE_REMOTE_AUDIT === 'true') {
+        const response = await fetch('/api/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: targetDraft.title,
+            format: targetDraft.format,
+            text: targetDraft.text,
+            visualAssets: targetDraft.visualAssets,
+            targetAudience: targetDraft.targetAudience,
+            confidentialMode: targetDraft.confidentialMode,
+          }),
+        });
+        if (!response.ok) throw new Error(`Audit failed with status ${response.status}`);
+        result = await response.json();
+        result.auditedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else {
+        result = createLocalAudit(targetDraft);
       }
-
-      const result: AuditResult = await response.json();
-      result.auditedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       const updatedDraft: ContentDraft = {
         ...targetDraft,
@@ -191,8 +250,8 @@ export default function App() {
       } catch (err) {
         console.warn('Firestore draft update save:', err);
       }
-    } catch (err) {
-      console.error('Audit execution error:', err);
+    } catch {
+      setAuditError('Audit service is unavailable. Your draft is still safe locally; try again shortly.');
     } finally {
       setIsAuditing(false);
     }
@@ -302,7 +361,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f6f8] text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f7f5f0] text-slate-900 flex flex-col font-sans">
       {/* Universal Header with Google Auth & Firestore Indicators */}
       <Header
         currentRole={currentRole}
@@ -318,10 +377,11 @@ export default function App() {
         onSignInWithGoogle={handleGoogleSignIn}
         onSignOut={handleSignOut}
         isSyncing={isSyncing}
+        hasFirestoreError={firestoreError}
       />
 
       {/* Main View Area */}
-      <main className="flex-1 flex min-w-0 overflow-hidden">
+      <main className="flex-1 flex min-w-0 overflow-auto lg:overflow-hidden flex-col lg:flex-row">
         {activeView === 'editor' && (
           <>
             <DraftList
@@ -342,6 +402,7 @@ export default function App() {
               onUpdateDraft={handleUpdateDraft}
               onRunAudit={() => runAuditForDraft(activeDraft)}
               isAuditing={isAuditing}
+              auditError={auditError}
               onOpenWorkflow={() => setIsWorkflowOpen(true)}
               onOpenVault={() => setActiveView('vault')}
               onOpenGoogleDrive={() => setIsDriveModalOpen(true)}
