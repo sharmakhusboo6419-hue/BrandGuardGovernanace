@@ -104,8 +104,14 @@ export const GoogleDriveModal: React.FC<GoogleDriveModalProps> = ({
         setTimeout(() => setStatusNotice(null), 2500);
       }
     } catch (err: any) {
-      console.error('Google Sign-in failed:', err);
-      setErrorMsg(err.message || 'Authentication with Google failed.');
+      if (err?.code === 'auth/unauthorized-domain') {
+        setErrorMsg(
+          `Google sign-in is not enabled for ${window.location.hostname}. Add this domain in Firebase Console under Authentication > Settings > Authorized domains, then reload the app.`
+        );
+      } else {
+        console.error('Google Sign-in failed:', err);
+        setErrorMsg(err.message || 'Authentication with Google failed.');
+      }
     } finally {
       setIsLoading(false);
     }
